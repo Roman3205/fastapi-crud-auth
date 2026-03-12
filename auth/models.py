@@ -1,4 +1,4 @@
-from database import Base, engine
+from auth.database import Base, engine
 from sqlalchemy import Column, Integer, String
 
 class User(Base):
@@ -9,5 +9,3 @@ class User(Base):
     email = Column(String(255), unique=True)
     hashed_password = Column(String(255))
     role = Column(String(50), default="user")
-
-Base.metadata.create_all(bind=engine)

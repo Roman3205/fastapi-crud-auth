@@ -1,16 +1,16 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
+from os import getenv
+from dotenv import load_dotenv
 
-engine = create_engine("sqlite:////Users/roman/fastapi.db")
+load_dotenv()
 
-SessionLocal = sessionmaker(autoflush=False, autocommit=False, bind=engine)
+engine = create_async_engine(getenv("DB_URI"))
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+AsyncSessionLocal = async_sessionmaker(autoflush=False, autocommit=False, bind=engine, expire_on_commit=False, class_=AsyncSession)
+
+async def get_db():
+    async with AsyncSessionLocal() as session:
+        yield session
 
 Base = declarative_base()
