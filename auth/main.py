@@ -4,6 +4,7 @@ from auth.database import get_db, engine, Base
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from os import getenv
 from datetime import datetime, timedelta
 from jose import jwt, JWTError
@@ -25,8 +26,11 @@ def create_access_token(data: dict):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    # no need due to alembic migrations, but for testing purposes
+
+    # async with engine.begin() as conn:
+    #     await conn.run_sync(Base.metadata.create_all)
+    
     yield
     await engine.dispose()
 
@@ -47,6 +51,9 @@ async def register_user(user: schemas.UserCreate, db: AsyncSession=Depends(get_d
         hashed_password = hashed_password,
         role = user.role
     )
+
+    new_post = models.Post(title="Test post", content="Some text...")
+    new_user.posts.append(new_post)
 
     db.add(new_user)
     await db.commit()
@@ -89,7 +96,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     except JWTError:
         raise credentials_exception
     
-    query = db.query(models.User).filter(models.User.id == int(user_id))
+    query = select(models.User).where(models.User.id == int(user_id)).options(selectinload(models.User.posts))
     result = await db.execute(query)
     user = result.scalars().first()
     if user is None:
@@ -98,9 +105,8 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession
     return user
 
 def require_roles(allowed_roles: list[str]):
-    def role_checker(current_user: dict = Depends(get_current_user)):
-        user_role = current_user.get('role')
-        if user_role not in allowed_roles:
+    def role_checker(current_user: models.User = Depends(get_current_user)):
+        if current_user.role not in allowed_roles:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
         return current_user
     return role_checker

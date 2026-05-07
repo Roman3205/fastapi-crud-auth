@@ -53,7 +53,16 @@ cp .env.example .env
 
 *Note: Open the newly created `.env` file and fill in your actual credentials/API keys.*
 
-### 5. Run the Application
+### 5. Apply Database Migrations
+
+Before running the application, you need to apply the latest database schema using Alembic. Make sure your database is running and the DB_URI in your .env file is correct, then run:
+
+```bash
+alembic upgrade head
+
+```
+
+### 6. Run the Application
 
 Finally, for example, start the auth project:
 
