@@ -7,7 +7,7 @@ load_dotenv()
 
 engine = create_async_engine(getenv("DB_URI"))
 
-AsyncSessionLocal = async_sessionmaker(autoflush=False, autocommit=False, bind=engine, expire_on_commit=False, class_=AsyncSession)
+AsyncSessionLocal = async_sessionmaker(autoflush=True, bind=engine, expire_on_commit=False)
 
 async def get_db():
     async with AsyncSessionLocal() as session:
