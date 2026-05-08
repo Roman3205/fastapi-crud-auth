@@ -38,33 +38,36 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post('/signup')
 async def register_user(user: schemas.UserCreate, db: AsyncSession=Depends(get_db)):
-    query = select(models.User).where(models.User.email == user.email)
-    result = await db.execute(query)
-    existing_user = result.scalars().first()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="User with provided email already existing")
+    async with db.begin():
+        query = select(models.User).where(models.User.email == user.email)
+        result = await db.execute(query)
+        existing_user = result.scalars().first()
+        if existing_user:
+            raise HTTPException(status_code=400, detail="User with provided email already existing")
 
-    hashed_password = await utils.hash_password(user.password)
-    new_user = models.User(
-        username = user.username,
-        email = user.email,
-        hashed_password = hashed_password,
-        role = user.role
-    )
+        hashed_password = await utils.hash_password(user.password)
+        new_user = models.User(
+            username = user.username,
+            email = user.email,
+            hashed_password = hashed_password,
+            role = user.role
+        )
 
-    new_post = models.Post(title="Test post", content="Some text...")
-    new_user.posts.append(new_post)
+        new_post = models.Post(title="Test post", content="Some text...")
+        new_user.posts.append(new_post)
 
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+        db.add_all([new_user, new_post])
 
-    return {
-        'id': new_user.id,
-        'username': new_user.username,
-        'email': new_user.email,
-        'role': new_user.role
-    }
+        await db.flush() # instead of commit and refresh
+        
+        response_data = {
+            'id': new_user.id,
+            'username': new_user.username,
+            'email': new_user.email,
+            'role': new_user.role
+        }
+
+    return response_data
 
 @app.post('/login')
 async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: AsyncSession = Depends(get_db)):
